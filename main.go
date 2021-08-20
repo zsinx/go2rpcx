@@ -27,6 +27,7 @@ func init() {
 	flag.StringVar(&filePath, "f", "", "source file path")
 	flag.StringVar(&target, "t", "rpc", "rpc file target path")
 	flag.Usage = usage
+	fmt.Println(target)
 }
 
 func main() {
@@ -34,6 +35,9 @@ func main() {
 	if filePath == "" {
 		flag.Usage()
 		return
+	}
+	if index := strings.LastIndex(target, "/"); len(target) > index {
+		target = target[index+1:]
 	}
 	start(filePath)
 }
@@ -57,12 +61,8 @@ func start(interfacePath string) {
 			return true
 		}
 		if importSpec, ok := node.(*ast.ImportSpec); ok {
-			if importSpec.Path.Value == "\"time\"" {
-				microService.ImportTime = true
-			} else {
-				importpath := importSpec.Path.Value
-				imports = append(imports, importpath)
-			}
+			importpath := importSpec.Path.Value
+			imports = append(imports, importpath)
 		}
 
 		if typeSpecNode, ok := node.(*ast.TypeSpec); ok {
@@ -160,10 +160,8 @@ func structParser(structName string, structNode *ast.StructType) []src.MessageFi
 
 		// 处理引用类型
 		if fieldType, ok := field.Type.(*ast.SelectorExpr); ok {
-			if p, ok := fieldType.X.(*ast.Ident); ok && p.Name == "time" {
-				messageField.FieldType = "time.Time"
-			} else {
-				messageField.FieldType = fieldType.Sel.Name
+			if p, ok := fieldType.X.(*ast.Ident); ok && p.Name != "" {
+				messageField.FieldType = fmt.Sprintf("%v.%v", p.Name, fieldType.Sel.Name)
 			}
 		}
 		// 处理参数是数组的情况
