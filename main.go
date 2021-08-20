@@ -27,7 +27,6 @@ func init() {
 	flag.StringVar(&filePath, "f", "", "source file path")
 	flag.StringVar(&target, "t", "rpc", "rpc file target path")
 	flag.Usage = usage
-	fmt.Println(target)
 }
 
 func main() {
