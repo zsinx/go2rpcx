@@ -35,9 +35,6 @@ func main() {
 		flag.Usage()
 		return
 	}
-	if index := strings.LastIndex(target, "/"); len(target) > index {
-		target = target[index+1:]
-	}
 	start(filePath)
 }
 
@@ -49,9 +46,14 @@ func start(interfacePath string) {
 		panic(err)
 	}
 
+	packageName := target
+	if index := strings.LastIndex(target, "/"); len(target) > index {
+		packageName = target[index+1:]
+	}
+
 	microService := src.MicroService{
 		FileName: interfacePath,
-		PackageName: target,
+		PackageName: packageName,
 	}
 	imports := []string{}
 	messages := []src.Message{}
