@@ -52,7 +52,7 @@ func start(interfacePath string) {
 	}
 
 	microService := src.MicroService{
-		FileName: interfacePath,
+		FileName:    interfacePath,
 		PackageName: packageName,
 	}
 	imports := []string{}
@@ -140,37 +140,10 @@ func structParser(structName string, structNode *ast.StructType) []src.MessageFi
 		if len(field.Names) != 1 {
 			log.Fatalf("struct %v error,the field can't define like 'name,address string'", structName)
 		}
+
 		messageField.FieldName = field.Names[0].Name
+		messageField.FieldType = fieldTypeParser(field.Type)
 
-		// 基本类型处理
-		if fieldType, ok := field.Type.(*ast.Ident); ok {
-			messageField.FieldType = fieldType.Name
-		}
-
-		// map类型处理
-		if fieldType, ok := field.Type.(*ast.MapType); ok {
-			key, value := "", ""
-			if keyType, ok := fieldType.Key.(*ast.Ident); ok {
-				key = keyType.Name
-			}
-			if valueType, ok := fieldType.Value.(*ast.Ident); ok {
-				value = valueType.Name
-			}
-			messageField.FieldType = fmt.Sprintf("map<%v,%v>", key, value)
-		}
-
-		// 处理引用类型
-		if fieldType, ok := field.Type.(*ast.SelectorExpr); ok {
-			if p, ok := fieldType.X.(*ast.Ident); ok && p.Name != "" {
-				messageField.FieldType = fmt.Sprintf("%v.%v", p.Name, fieldType.Sel.Name)
-			}
-		}
-		// 处理参数是数组的情况
-		if fieldType, ok := field.Type.(*ast.ArrayType); ok {
-			if fieldTypeElt, ok := fieldType.Elt.(*ast.Ident); ok {
-				messageField.FieldType = "[]" + fieldTypeElt.Name
-			}
-		}
 		// 获取标签
 		if field.Tag != nil {
 			messageField.FieldTag = field.Tag.Value
@@ -184,6 +157,67 @@ func structParser(structName string, structNode *ast.StructType) []src.MessageFi
 		messageFields = append(messageFields, messageField)
 	}
 	return messageFields
+}
+
+/*
+解析字段类型
+*/
+func fieldTypeParser(fType ast.Expr) string {
+	// 基本类型处理
+	if fieldType, ok := fType.(*ast.Ident); ok {
+		return fieldType.Name
+	}
+
+	// interface类型处理
+	if _, ok := fType.(*ast.InterfaceType); ok {
+		return "interface{}"
+	}
+
+	// struct类型处理
+	if _, ok := fType.(*ast.StructType); ok {
+		return "struct{}"
+	}
+
+	// map类型处理
+	if fieldType, ok := fType.(*ast.MapType); ok {
+		key, value := "", ""
+		if keyType, ok := fieldType.Key.(*ast.Ident); ok {
+			key = keyType.Name
+		} else {
+			key = fieldTypeParser(fieldType.Key)
+		}
+		if valueType, ok := fieldType.Value.(*ast.Ident); ok {
+			value = valueType.Name
+		} else {
+			value = fieldTypeParser(fieldType.Value)
+		}
+		return fmt.Sprintf("map[%v]%v", key, value)
+	}
+
+	// 引用类型处理
+	if fieldType, ok := fType.(*ast.SelectorExpr); ok {
+		if p, ok := fieldType.X.(*ast.Ident); ok && p.Name != "" {
+			return fmt.Sprintf("%v.%v", p.Name, fieldType.Sel.Name)
+		} else {
+			return fieldTypeParser(fieldType.X)
+		}
+	}
+
+	// 指针类型处理
+	if fieldType, ok := fType.(*ast.StarExpr); ok {
+		if p, ok := fieldType.X.(*ast.Ident); ok && p.Name != "" {
+			return "*" + p.Name
+		} else {
+			return "*" + fieldTypeParser(fieldType.X)
+		}
+	}
+
+	// 数组类型处理
+	if fieldType, ok := fType.(*ast.ArrayType); ok {
+		return "[]" + fieldTypeParser(fieldType.Elt)
+	}
+
+	return ""
 }
 
 /*

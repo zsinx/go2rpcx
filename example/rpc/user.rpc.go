@@ -87,16 +87,25 @@ func (c *UserClient) GetUser(ctx context.Context, args *Request) (reply *Respons
 // UserOneClient is a client wrapped oneClient.
 type UserOneClient struct {
 	serviceName string
-	oneclient   client.OneClient
+	oneclient   *client.OneClient
 }
 
 // NewUserOneClient wraps a OneClient as UserOneClient.
 // You can pass a shared OneClient object created by NewOneClientForUser.
-func NewUserOneClient(oneclient client.OneClient) *UserOneClient {
+func NewUserOneClient(oneclient *client.OneClient) *UserOneClient {
 	return &UserOneClient{
 		serviceName: ServiceNameOfUser,
 		oneclient:   oneclient,
 	}
+}
+
+// NewOneClientForUser creates a OneClient.
+// You can configure this client with more options such as etcd registry, serialize type, select algorithm and fail mode.
+func NewOneClientForUser(discovery client.ServiceDiscovery) (*client.OneClient, error) {
+	opt := client.DefaultOption
+	oneclient := client.NewOneClient(client.Failtry, client.RoundRobin, discovery, opt)
+
+	return oneclient, nil
 }
 
 func (c *UserOneClient) GetUser(ctx context.Context, args *Request) (reply *Response, err error) {

@@ -50,7 +50,7 @@ func ServerFor{{.Service.Name}}(addr string, plugin server.Plugin) error {
 }
 
 func Register{{.Service.Name}}Server(s *server.Server, srv I{{.Service.Name}}Service, metadata string) error {
-	return s.RegisterName(ServiceNameOfUser, srv, metadata)
+	return s.RegisterName(ServiceNameOf{{.Service.Name}}, srv, metadata)
 }
 
 {{- range .Service.ServiceFunctions}}
@@ -99,16 +99,25 @@ func (c *{{$.Service.Name}}Client) {{.Name}}(ctx context.Context, args *{{.Param
 // {{.Service.Name}}OneClient is a client wrapped oneClient.
 type {{.Service.Name}}OneClient struct {
 	serviceName string
-	oneclient   client.OneClient
+	oneclient   *client.OneClient
 }
 
 // New{{.Service.Name}}OneClient wraps a OneClient as {{.Service.Name}}OneClient.
 // You can pass a shared OneClient object created by NewOneClientFor{{.Service.Name}}.
-func New{{.Service.Name}}OneClient(oneclient client.OneClient) *{{.Service.Name}}OneClient {
+func New{{.Service.Name}}OneClient(oneclient *client.OneClient) *{{.Service.Name}}OneClient {
 	return &{{.Service.Name}}OneClient{
 		serviceName: ServiceNameOf{{.Service.Name}},
 		oneclient:   oneclient,
 	}
+}
+
+// NewOneClientFor{{.Service.Name}} creates a OneClient.
+// You can configure this client with more options such as etcd registry, serialize type, select algorithm and fail mode.
+func NewOneClientFor{{.Service.Name}}(discovery client.ServiceDiscovery) (*client.OneClient, error) {
+	opt := client.DefaultOption
+	oneclient := client.NewOneClient(client.Failtry, client.RoundRobin, discovery, opt)
+
+	return oneclient, nil
 }
 
 {{- range .Service.ServiceFunctions}}
